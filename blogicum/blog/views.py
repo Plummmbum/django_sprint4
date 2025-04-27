@@ -164,4 +164,4 @@ def delete_post(request, post_id):
             return redirect('blog:profile', username=request.user.username)
         return HttpResponseForbidden()
     return render(request, 'blog/create.html',
-                  {'post': post, 'form': form})
+                  {'post': post})

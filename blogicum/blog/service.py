@@ -15,6 +15,7 @@ def get_published_posts(
         pub_posts=False,
         order_by='-pub_date'
      ):
+
     """Возвращает опубликованные посты."""
     if queryset is None:
         queryset = Post.objects.filter(
