@@ -1,6 +1,5 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db.models import Count
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -42,7 +41,10 @@ def category_posts(request, category_slug: str) -> None:
         slug=category_slug,
         is_published=True
     )
-    filtered_posts = (get_published_posts(filter_flag=True, count_comment_flag=True).filter(category=category))
+    filtered_posts = (get_published_posts(
+        filter_flag=True,
+        count_comment_flag=True
+    ).filter(category=category))
     page_obj = paginate(filtered_posts, request, QUANTITY_PUB)
     return render(request, 'blog/category.html',
                   {'page_obj': page_obj, 'category': category})
@@ -52,7 +54,10 @@ def profile(request, username):
     """Отображает профиль авторизованного пользователя."""
     user = get_object_or_404(User, username=username)
     current_user = request.user
-    posts = (get_published_posts(queryset=Post.objects.filter(author=user), user=current_user, count_comment_flag=True))
+    posts = (get_published_posts(
+        queryset=Post.objects.filter(author=user),
+        user=current_user, count_comment_flag=True
+    ))
     page_obj = paginate(posts, request, QUANTITY_PUB)
     return render(request, 'blog/profile.html',
                   {'profile': user, 'page_obj': page_obj})
