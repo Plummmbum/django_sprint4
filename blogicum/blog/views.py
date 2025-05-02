@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 
-from blog.constants import QUANTITY_PUB
 from blog.forms import CommentForm, EditProfileForm, PostForm
 from blog.models import Category, Comment, Post
 from blog.service import get_published_posts, paginate
@@ -25,9 +24,9 @@ def post_detail(request, post_id):
         pk=post_id
     )
     if (
-            (post.author != user)
-            and (not post.is_published or not post.category.is_published)
-       ):
+        (post.author != user)
+        and (not post.is_published or not post.category.is_published)
+    ):
         raise Http404()
     form = CommentForm()
     return render(request, 'blog/detail.html',
@@ -51,7 +50,6 @@ def category_posts(request, category_slug: str) -> None:
 def profile(request, username):
     """Отображает профиль авторизованного пользователя."""
     user = get_object_or_404(User, username=username)
-    current_user = request.user
     posts = (get_published_posts(
         queryset=user.posts.all(),
         filter_flag=False
