@@ -101,7 +101,7 @@ class Post(PublicationBase):
         return self.title[:NUM_SYMBOL]
 
     def get_absolute_url(self):
-        return reverse('post_detail', kwargs={'pk': self.pk})
+        return reverse('post_detail', args=(self.pk,))
 
 
 class Comment(models.Model):
@@ -112,10 +112,19 @@ class Comment(models.Model):
         related_name='comments',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
 
     class Meta:
+        verbose_name = 'Комментарий'
         ordering = ('created_at',)
 
     def __str__(self):
-        return self.text
+        return (
+            f"Комментарий автора {self.author.username} "
+            f"к посту {self.post.title}, "
+            f"текст: {self.text}"
+        )

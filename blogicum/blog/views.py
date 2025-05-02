@@ -11,27 +11,28 @@ from blog.service import get_published_posts, paginate
 
 def index(request) -> None:
     """Отображает главную страницу с постами."""
-    post_list = (get_published_posts(
-        filter_flag=True, count_comment_flag=True
-    ))
-    page_obj = paginate(post_list, request, QUANTITY_PUB)
+    post_list = (get_published_posts())
+    page_obj = paginate(post_list, request)
     return render(request, 'blog/index.html',
                   {'page_obj': page_obj})
 
 
 def post_detail(request, post_id):
     """Отображает подробности поста по его id."""
+    user = request.user
     post = get_object_or_404(
         Post.objects.select_related('author', 'location', 'category'),
         pk=post_id
     )
-    user = request.user
-    if not post.is_published and post.author != user:
+    if (
+            (post.author != user)
+            and (not post.is_published or not post.category.is_published)
+       ):
         raise Http404()
     form = CommentForm()
     return render(request, 'blog/detail.html',
                   {'post': post, 'form': form,
-                   'comments': post.comments.all()})
+                   'comments': post.comments.select_related('author').all()})
 
 
 def category_posts(request, category_slug: str) -> None:
@@ -41,11 +42,8 @@ def category_posts(request, category_slug: str) -> None:
         slug=category_slug,
         is_published=True
     )
-    filtered_posts = (get_published_posts(
-        filter_flag=True,
-        count_comment_flag=True
-    ).filter(category=category))
-    page_obj = paginate(filtered_posts, request, QUANTITY_PUB)
+    filtered_posts = get_published_posts(queryset=category.posts.all())
+    page_obj = paginate(filtered_posts, request)
     return render(request, 'blog/category.html',
                   {'page_obj': page_obj, 'category': category})
 
@@ -55,10 +53,10 @@ def profile(request, username):
     user = get_object_or_404(User, username=username)
     current_user = request.user
     posts = (get_published_posts(
-        queryset=Post.objects.filter(author=user),
-        user=current_user, count_comment_flag=True
+        queryset=user.posts.all(),
+        filter_flag=False
     ))
-    page_obj = paginate(posts, request, QUANTITY_PUB)
+    page_obj = paginate(posts, request)
     return render(request, 'blog/profile.html',
                   {'profile': user, 'page_obj': page_obj})
 
@@ -66,7 +64,7 @@ def profile(request, username):
 @login_required
 def edit_profile(request):
     """Отображает страницу редактирования профиля."""
-    form = EditProfileForm(request.POST,
+    form = EditProfileForm(request.POST or None,
                            instance=request.user)
     if form.is_valid():
         form.save()
@@ -79,7 +77,7 @@ def edit_profile(request):
 @login_required
 def create_post(request):
     """Отображает страницу создания нового поста."""
-    form = PostForm(request.POST or None, request.FILES)
+    form = PostForm(request.POST or None, request.FILES or None)
     if form.is_valid():
         post = form.save(commit=False)
         post.author = request.user
@@ -96,12 +94,10 @@ def edit_post(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     if post.author != request.user:
         return redirect('blog:post_detail', post_id=post_id)
-    form = PostForm(request.POST or None, instance=post)
+    form = PostForm(request.POST or None, request.FILES or None, instance=post)
     if form.is_valid():
         form.save()
         return redirect('blog:post_detail', post_id=post_id)
-    else:
-        form = PostForm(instance=post)
     return render(request, 'blog/create.html',
                   {'form': form})
 
@@ -116,8 +112,8 @@ def add_comment(request, post_id):
         comment.post = post
         comment.author = request.user
         comment.save()
-        return redirect('blog:post_detail',
-                        post_id=post.id)
+    return redirect('blog:post_detail',
+                    post_id=post.id)
 
 
 @login_required
@@ -133,8 +129,6 @@ def edit_comment(request, post_id, comment_id):
             'blog:post_detail',
             post_id=post_id
         )
-    else:
-        form = CommentForm(instance=comment)
     return render(request, 'blog/comment.html',
                   {'form': form, 'comment': comment})
 
