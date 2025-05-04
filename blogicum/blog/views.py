@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from blog.forms import CommentForm, EditProfileForm, PostForm
 from blog.models import Category, Comment, Post
@@ -10,7 +11,7 @@ from blog.service import get_published_posts, paginate
 
 def index(request) -> None:
     """Отображает главную страницу с постами."""
-    post_list = (get_published_posts())
+    post_list = get_published_posts()
     page_obj = paginate(post_list, request)
     return render(request, 'blog/index.html',
                   {'page_obj': page_obj})
@@ -24,8 +25,9 @@ def post_detail(request, post_id):
         pk=post_id
     )
     if (
-        (post.author != user)
-        and (not post.is_published or not post.category.is_published)
+        ((not post.is_published or not post.category.is_published)
+         or post.pub_date > timezone.now())
+        and post.author != user
     ):
         raise Http404()
     form = CommentForm()
@@ -52,7 +54,7 @@ def profile(request, username):
     user = get_object_or_404(User, username=username)
     posts = (get_published_posts(
         queryset=user.posts.all(),
-        filter_flag=False
+        filter_flag=user != request.user
     ))
     page_obj = paginate(posts, request)
     return render(request, 'blog/profile.html',

@@ -125,6 +125,6 @@ class Comment(models.Model):
     def __str__(self):
         return (
             f"Комментарий автора {self.author.username} "
-            f"к посту {self.post.title}, "
+            f"к посту {self.post}, "
             f"текст: {self.text}"
         )
